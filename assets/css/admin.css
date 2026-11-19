@@ -1,0 +1,63 @@
+/* Core Gas admin field UI */
+.cg-group-desc { margin: 4px 0 12px; color: #50575e; }
+.cg-fields { display: grid; gap: 4px; }
+.cg-field { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 8px 20px; align-items: start; padding: 12px 0; border-top: 1px solid #f0f0f1; }
+.cg-field:first-child { border-top: 0; }
+.cg-field--wide { grid-template-columns: 1fr; }
+.cg-field--checkbox { grid-template-columns: 1fr; }
+.cg-field__label { font-weight: 600; padding-top: 6px; }
+.cg-field .description { margin-top: 6px; }
+.cg-field input.regular-text, .cg-field select { width: 100%; max-width: 520px; }
+.cg-check { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; }
+
+.cg-image__preview img { display: block; max-width: 240px; max-height: 140px; margin-bottom: 8px; border: 1px solid #dcdcde; border-radius: 6px; background: #f6f7f7; }
+.cg-image__clear { margin-left: 8px; color: #b32d2e; }
+
+.cg-repeater__rows { display: grid; gap: 12px; margin-bottom: 12px; }
+.cg-repeater__row { border: 1px solid #dcdcde; border-radius: 6px; background: #fbfbfc; padding: 0 14px 6px; }
+.cg-repeater__bar { display: flex; justify-content: space-between; align-items: center; margin: 0 -14px 4px; padding: 8px 14px; border-bottom: 1px solid #dcdcde; background: #f0f0f1; border-radius: 6px 6px 0 0; }
+.cg-repeater__bar .button-link { text-decoration: none; margin-left: 6px; }
+.cg-repeater__remove { color: #b32d2e; }
+.cg-repeater__row .cg-field { grid-template-columns: 180px minmax(0, 1fr); }
+
+@media (max-width: 782px) {
+  .cg-field, .cg-repeater__row .cg-field { grid-template-columns: 1fr; }
+}
+
+/* ---------- page editor: section panels ---------- */
+#cg-page-sections .inside { margin: 0; padding: 0 16px 16px; }
+.cgs-intro { margin: 14px 0; font-size: 14px; color: #1d2327; }
+.cgs-list { display: flex; flex-direction: column; gap: 10px; }
+.cgs-panel { border: 1px solid #c3c4c7; border-radius: 8px; background: #fff; }
+.cgs-panel[open] { box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.cgs-panel.is-hidden { background: #f6f7f7; }
+.cgs-panel.is-removing { opacity: .5; }
+.cgs-panel__head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.cgs-panel__head::-webkit-details-marker { display: none; }
+.cgs-panel__head::before { content: "▸"; color: #787c82; }
+.cgs-panel[open] > .cgs-panel__head::before { content: "▾"; }
+.cgs-panel__title { font-weight: 600; font-size: 14px; }
+.cgs-panel__type { color: #646970; }
+.cgs-panel__badge { padding: 1px 8px; border-radius: 10px; background: #dcdcde; font-size: 11px; }
+.cgs-panel__tools { margin-left: auto; display: flex; gap: 12px; }
+.cgs-panel__tools .button-link { text-decoration: none; }
+.cgs-panel__body { padding: 4px 16px 16px; border-top: 1px solid #f0f0f1; }
+.cgs-basics { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 12px 0; border-bottom: 1px solid #f0f0f1; }
+.cgs-basics label { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.cgs-basics .regular-text { width: 280px; }
+.cgs-remove { color: #b32d2e; }
+.cgs-group__title { margin: 18px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #646970; }
+.cgs-source-note { margin: 8px 0 0; }
+.cgs-add { margin-top: 16px; padding: 14px; border: 1px dashed #c3c4c7; border-radius: 8px; background: #f6f7f7; }
+.cgs-empty { color: #646970; }
+
+/* ---------- settings: sub-headings and tabs ---------- */
+.cg-subheading { margin: 22px 0 4px; padding-top: 14px; border-top: 2px solid #f0f0f1; font-size: 14px; }
+.cg-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 16px 0 12px; padding: 6px; background: #fff; border: 1px solid #c3c4c7; border-radius: 8px; }
+.cg-tabs button { border: 0; background: none; padding: 9px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: #1d2327; }
+.cg-tabs button:hover { background: #f0f0f1; }
+.cg-tabs button.is-active { background: #48050b; color: #fff; }
+.cg-tabs-help { margin: 0 0 12px; color: #50575e; }
+
+.cg-reset { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid #f0f0f1; text-align: right; }
+.cg-reset .button-link { color: #b32d2e; }

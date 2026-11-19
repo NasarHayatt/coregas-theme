@@ -45,9 +45,6 @@ $copyright  = str_replace( '{year}', wp_date( 'Y' ), (string) coregas_setting( '
 					<p class="ftr__badge mono"><span class="ftr__dot" aria-hidden="true"></span><?php echo esc_html( $badge ); ?></p>
 				<?php endif; ?>
 			<?php endif; ?>
-			<?php if ( coregas_profile_enabled() ) : ?>
-				<a class="ftr__profile" href="<?php echo esc_url( home_url( '/company-profile/' ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( coregas_setting( 'profile_label' ) ); ?> <span aria-hidden="true">↓</span></a>
-			<?php endif; ?>
 			<?php if ( $phone || $email ) : ?>
 				<p class="ftr__contact">
 					<?php if ( $phone ) : ?>

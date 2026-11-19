@@ -13,7 +13,7 @@ coregas_banner(
 	coregas_archive_banner(
 		'search',
 		array(
-			'eyebrow' => __( 'Search', 'coregas' ),
+			'eyebrow' => coregas_label( 'search_eyebrow' ),
 			'title'   => coregas_label( 'search_title', array( 'query' => get_search_query() ) ),
 			'text'    => '',
 		)

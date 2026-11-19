@@ -96,8 +96,12 @@ function coregas_settings_menu() {
 	add_action(
 		'load-' . $hook,
 		function () {
-			$id = coregas_settings_id( true );
-			wp_safe_redirect( admin_url( 'post.php?post=' . $id . '&action=edit' ) );
+			$id  = coregas_settings_id( true );
+			$url = admin_url( 'post.php?post=' . $id . '&action=edit' );
+			if ( ! empty( $_GET['cg_tab'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+				$url = add_query_arg( 'cg_tab', rawurlencode( sanitize_text_field( wp_unslash( $_GET['cg_tab'] ) ) ), $url ); // phpcs:ignore WordPress.Security.NonceVerification
+			}
+			wp_safe_redirect( $url );
 			exit;
 		}
 	);

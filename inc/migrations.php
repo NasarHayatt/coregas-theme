@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const COREGAS_DB_VERSION = 15;
+const COREGAS_DB_VERSION = 16;
 
 add_action( 'init', 'coregas_run_migrations', 120 ); // after theme activation/seed (init 99).
 /**
@@ -93,6 +93,25 @@ function coregas_run_migrations() {
 			update_option( 'blogname', 'Core Gas' );
 		}
 		update_option( 'coregas_db_version', 15 );
+	}
+	if ( $current < 16 ) {
+		// The company profile download was removed: drop its links and settings.
+		foreach ( get_posts( array( 'post_type' => 'cg_section', 'post_status' => 'any', 'posts_per_page' => 300, 'fields' => 'ids' ) ) as $sid ) {
+			$links = get_post_meta( $sid, COREGAS_META_PREFIX . 'sec_links', true );
+			if ( is_array( $links ) ) {
+				$keep = array_values( array_filter( $links, function ( $l ) { return ! ( isset( $l['url'] ) && false !== strpos( $l['url'], 'company-profile' ) ); } ) );
+				if ( count( $keep ) !== count( $links ) ) {
+					update_post_meta( $sid, COREGAS_META_PREFIX . 'sec_links', $keep );
+				}
+			}
+		}
+		$settings = coregas_settings_id();
+		if ( $settings ) {
+			foreach ( array( 'profile_show', 'profile_label', 'profile_pdf' ) as $k ) {
+				delete_post_meta( $settings, COREGAS_META_PREFIX . $k );
+			}
+		}
+		update_option( 'coregas_db_version', 16 );
 	}
 
 	delete_transient( 'coregas_migrating' );

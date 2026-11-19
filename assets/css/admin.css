@@ -61,3 +61,7 @@
 
 .cg-reset { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid #f0f0f1; text-align: right; }
 .cg-reset .button-link { color: #b32d2e; }
+
+/* list section: item edit buttons */
+.cgs-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cgs-items .button { margin: 0; }

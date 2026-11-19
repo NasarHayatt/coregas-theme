@@ -22,7 +22,7 @@ function coregas_section_type_labels() {
 		'hero'  => __( 'Hero (photos + headline)', 'coregas' ),
 		'about' => __( 'About block (statement, image, pillars)', 'coregas' ),
 		'split' => __( 'Image and text', 'coregas' ),
-		'cards' => __( 'List of items (services, licences, companies…)', 'coregas' ),
+		'cards' => __( 'List of items (services, licences, industries, news)', 'coregas' ),
 		'steps' => __( 'Steps strip', 'coregas' ),
 		'columns' => __( 'Columns (2-4 text columns)', 'coregas' ),
 		'gallery' => __( 'Photo gallery', 'coregas' ),
@@ -50,10 +50,63 @@ function coregas_cards_source_link( $source ) {
 	if ( ! isset( $labels[ $source ] ) ) {
 		return '';
 	}
-	return sprintf(
-		/* translators: %s: link to the list of items */
-		__( 'The items in this list are edited under %s (opens in a new tab).', 'coregas' ),
-		'<a href="' . esc_url( admin_url( 'edit.php?post_type=' . $source ) ) . '" target="_blank">' . esc_html( $labels[ $source ] ) . '</a>'
+	$list = 'post' === $source ? admin_url( 'edit.php' ) : admin_url( 'edit.php?post_type=' . $source );
+	$new  = 'post' === $source ? admin_url( 'post-new.php' ) : admin_url( 'post-new.php?post_type=' . $source );
+	$out  = sprintf(
+		/* translators: %s: name of the list */
+		__( 'The items shown here are edited one by one (each opens in a new tab). They are listed under %s in the dashboard menu.', 'coregas' ),
+		'<strong>' . esc_html( $labels[ $source ] ) . '</strong>'
+	);
+	$items = get_posts(
+		array(
+			'post_type'      => $source,
+			'post_status'    => array( 'publish', 'draft', 'pending', 'private' ),
+			'posts_per_page' => 20,
+			'orderby'        => array( 'menu_order' => 'ASC', 'date' => 'DESC' ),
+		)
+	);
+	$out .= '<span class="cgs-items">';
+	foreach ( $items as $item ) {
+		$state = 'publish' === $item->post_status ? '' : ' (' . esc_html( get_post_status_object( $item->post_status )->label ) . ')';
+		$out  .= '<a class="button button-small" href="' . esc_url( get_edit_post_link( $item->ID, 'url' ) ) . '" target="_blank">' . esc_html__( 'Edit', 'coregas' ) . ': ' . esc_html( get_the_title( $item ) ) . $state . '</a> ';
+	}
+	$out .= '<a class="button button-small button-primary" href="' . esc_url( $new ) . '" target="_blank">+ ' . esc_html__( 'Add new', 'coregas' ) . '</a> ';
+	$out .= '<a class="button button-small" href="' . esc_url( $list ) . '" target="_blank">' . esc_html__( 'All', 'coregas' ) . ' ' . esc_html( $labels[ $source ] ) . '</a>';
+	$out .= '</span>';
+	return $out;
+}
+
+/**
+ * Link to a Theme Settings tab.
+ *
+ * @param string $tab Tab name.
+ * @return string
+ */
+function coregas_settings_tab_url( $tab ) {
+	return add_query_arg( 'cg_tab', rawurlencode( $tab ), admin_url( 'admin.php?page=coregas-settings' ) );
+}
+
+add_action( 'add_meta_boxes_page', 'coregas_contact_page_box', 30 );
+/**
+ * Contact page: say where its contact details and form are edited.
+ *
+ * @param WP_Post $post Page.
+ */
+function coregas_contact_page_box( $post ) {
+	if ( 'page-templates/contact.php' !== get_page_template_slug( $post ) ) {
+		return;
+	}
+	add_meta_box(
+		'cg-contact-help',
+		__( 'Contact details & enquiry form', 'coregas' ),
+		function () {
+			echo '<p>' . esc_html__( 'The text box above is the intro next to the form. The office address, phone, email, opening hours, map, the form fields and labels, the enquiry types and the email recipient are shared with the footer, so they are edited in one place:', 'coregas' ) . '</p>';
+			echo '<p><a class="button button-primary" href="' . esc_url( coregas_settings_tab_url( 'Contact & form' ) ) . '" target="_blank">' . esc_html__( 'Edit contact details & form', 'coregas' ) . '</a> ';
+			echo '<a class="button" href="' . esc_url( admin_url( 'edit.php?post_type=cg_enquiry' ) ) . '" target="_blank">' . esc_html__( 'View enquiries received', 'coregas' ) . '</a></p>';
+		},
+		'page',
+		'normal',
+		'high'
 	);
 }
 
@@ -183,6 +236,9 @@ function coregas_render_section_panel( $section, $pos ) {
 			}
 			$value = coregas_meta( $sid, $field['key'], isset( $field['default'] ) ? $field['default'] : '' );
 			coregas_render_field_row( $field, $value, $base . '[' . $field['key'] . ']', 'cgs-' . $sid . '-' . $field['key'] );
+		}
+		if ( 'contact_sec' === $group['id'] ) {
+			echo '<p class="description cgs-source-note">' . esc_html__( 'Address, phone, email, map and the form fields are shared site-wide:', 'coregas' ) . ' <a class="button button-small" href="' . esc_url( coregas_settings_tab_url( 'Contact & form' ) ) . '" target="_blank">' . esc_html__( 'Edit contact details & form', 'coregas' ) . '</a></p>';
 		}
 		if ( 'cards' === $group['id'] ) {
 			echo '<p class="description cgs-source-note">' . wp_kses_post( coregas_cards_source_link( coregas_meta( $sid, 'cards_source' ) ) ) . '</p>';

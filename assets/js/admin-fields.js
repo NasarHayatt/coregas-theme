@@ -143,6 +143,9 @@
     bar.on('click', 'button', function () { show($(this).attr('data-tab')); });
     var start = null;
     try { start = sessionStorage.getItem('cgTab'); } catch (e) {}
+    // A link can open a specific tab: ...&cg_tab=Contact%20%26%20form
+    var asked = (window.location.search.match(/[?&]cg_tab=([^&]+)/) || [])[1];
+    if (asked) { try { start = decodeURIComponent(asked.replace(/\+/g, ' ')); } catch (e) {} }
     show(names.indexOf(start) !== -1 ? start : names[0]);
   }
 

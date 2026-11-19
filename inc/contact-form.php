@@ -86,7 +86,7 @@ function coregas_contact_details() {
 		echo '<div><dt class="mono">' . esc_html( coregas_label( 'email' ) ) . '</dt><dd><a href="mailto:' . esc_attr( antispambot( $email ) ) . '">' . esc_html( antispambot( $email ) ) . '</a></dd></div>';
 	}
 	if ( $hours ) {
-		echo '<div><dt class="mono">' . esc_html__( 'Hours', 'coregas' ) . '</dt><dd>' . esc_html( $hours ) . '</dd></div>';
+		echo '<div><dt class="mono">' . esc_html( coregas_label( 'hours' ) ) . '</dt><dd>' . esc_html( $hours ) . '</dd></div>';
 	}
 	echo '</dl>';
 	$social = coregas_social_links();

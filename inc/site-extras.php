@@ -1,8 +1,8 @@
 <?php
 /**
  * Launch helpers: staging kept out of search engines, email sending (SMTP) with a
- * test button, default favicon, security headers, hidden PHP errors, the company
- * profile download and menu links that hide themselves while their list is empty.
+ * test button, default favicon, security headers, hidden PHP errors and menu links
+ * that hide themselves while their list is empty.
  * All switches live in Theme Settings.
  *
  * @package CoreGas
@@ -202,46 +202,6 @@ add_action(
 			echo '<link rel="icon" href="' . esc_url( COREGAS_URI . '/assets/img/favicon-32.png' ) . '" sizes="32x32">' . "\n";
 		}
 	}
-);
-
-/* -------------------------------------------------------------------------
- * Company profile download: /company-profile/ serves the PDF.
- * ---------------------------------------------------------------------- */
-
-/**
- * URL of the company profile PDF (uploaded one, else the bundled one).
- *
- * @return string
- */
-function coregas_profile_pdf_url() {
-	$custom = trim( (string) coregas_setting( 'profile_pdf' ) );
-	return $custom ? $custom : COREGAS_URI . '/assets/docs/core-gas-company-profile.pdf';
-}
-
-/**
- * Should the download link be shown?
- *
- * @return bool
- */
-function coregas_profile_enabled() {
-	return '1' === coregas_setting( 'profile_show' );
-}
-
-add_action(
-	'template_redirect',
-	function () {
-		if ( ! is_404() || ! coregas_profile_enabled() ) {
-			return;
-		}
-		$path = trim( (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '', PHP_URL_PATH ), '/' );
-		$base = trim( (string) wp_parse_url( home_url(), PHP_URL_PATH ), '/' );
-		$slug = trim( $base ? preg_replace( '#^' . preg_quote( $base, '#' ) . '#', '', $path ) : $path, '/' );
-		if ( 'company-profile' === $slug ) {
-			wp_redirect( coregas_profile_pdf_url(), 302 ); // phpcs:ignore WordPress.Security.SafeRedirect -- may be a media/CDN URL.
-			exit;
-		}
-	},
-	5
 );
 
 /* -------------------------------------------------------------------------

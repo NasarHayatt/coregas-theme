@@ -582,11 +582,6 @@ a.ftr__badge:hover { border-color: var(--ember); }
   .ftr__base { flex-direction: column; align-items: flex-start; }
 }
 
-/* footer: company profile download */
-.ftr__profile { color: var(--footer-head, #f4f1ee); font-weight: 500; text-decoration: underline; text-decoration-color: var(--ember); text-underline-offset: 4px; }
-.ftr__profile:hover { color: var(--ember); }
-.ftr__profile span { color: var(--ember); }
-
 /* enquiry form: gas supply application fields */
 .cg-form__supply { grid-column: 1 / -1; margin: 6px 0 0; padding: 20px 0 0; border: 0; border-top: 1px solid rgba(72,5,11,.16); display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
 .cg-form__supply[hidden] { display: none; }

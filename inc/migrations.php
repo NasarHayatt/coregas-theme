@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const COREGAS_DB_VERSION = 16;
+const COREGAS_DB_VERSION = 17;
 
 add_action( 'init', 'coregas_run_migrations', 120 ); // after theme activation/seed (init 99).
 /**
@@ -112,6 +112,15 @@ function coregas_run_migrations() {
 			}
 		}
 		update_option( 'coregas_db_version', 16 );
+	}
+	if ( $current < 17 && ! get_transient( 'coregas_media_retry' ) ) {
+		// Photos into the Media Library. If a download fails, try again in 10 minutes
+		// (photos already downloaded are kept and reused).
+		if ( coregas_migration_17() ) {
+			update_option( 'coregas_db_version', 17 );
+		} else {
+			set_transient( 'coregas_media_retry', 1, 10 * MINUTE_IN_SECONDS );
+		}
 	}
 
 	delete_transient( 'coregas_migrating' );
@@ -1367,6 +1376,155 @@ function coregas_migration_14() {
 			update_post_meta( $who[0], $prefix . 'sec_links', array( array( 'label' => 'Download company profile', 'url' => '/company-profile/' ) ) );
 		}
 	}
+}
+
+/**
+ * Download a photo into the Media Library once (found again by its source key).
+ *
+ * @param string $key   Short key stored on the attachment.
+ * @param string $url   Source URL.
+ * @param string $file  File name to save as.
+ * @param string $title Title and alt text.
+ * @return int Attachment ID or 0.
+ */
+function coregas_import_remote_image( $key, $url, $file, $title ) {
+	$found = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'meta_key' => '_coregas_source', 'meta_value' => $key, 'posts_per_page' => 1, 'fields' => 'ids' ) );
+	if ( $found ) {
+		return (int) $found[0];
+	}
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$tmp = new WP_Error( 'none', '' );
+	for ( $try = 0; $try < 3 && is_wp_error( $tmp ); $try++ ) {
+		$tmp = download_url( $url, 25 ); // flaky connections: short timeout, a few attempts.
+	}
+	if ( is_wp_error( $tmp ) ) {
+		return 0;
+	}
+	$id = media_handle_sideload( array( 'name' => $file, 'tmp_name' => $tmp ), 0, $title );
+	if ( is_wp_error( $id ) ) {
+		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		return 0;
+	}
+	update_post_meta( $id, '_wp_attachment_image_alt', $title );
+	update_post_meta( $id, '_coregas_source', $key );
+	return (int) $id;
+}
+
+/**
+ * Find an attachment by file name (e.g. images imported by earlier updates), or import the bundled file.
+ *
+ * @param string $file  File in assets/img/stock.
+ * @param string $title Title and alt text.
+ * @return int
+ */
+function coregas_find_or_import_bundled( $file, $title ) {
+	global $wpdb;
+	$base = pathinfo( $file, PATHINFO_FILENAME );
+	$id   = (int) $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND meta_value LIKE %s ORDER BY post_id ASC LIMIT 1", '%/' . $wpdb->esc_like( $base ) . '%' ) );
+	if ( $id && get_post( $id ) ) {
+		return $id;
+	}
+	return coregas_import_bundled_image( $file, 0, $title );
+}
+
+/**
+ * v17: every photo the site shows goes into the Media Library and is set where it is
+ * used, so nothing is loaded from the placeholder photo service and every photo can be
+ * replaced from the dashboard. Only empty photo fields are filled: the site looks the same.
+ *
+ * @return bool False when a download failed (retried later).
+ */
+function coregas_migration_17() {
+	$p   = COREGAS_META_PREFIX;
+	$src = function ( $id ) {
+		return 'https://images.unsplash.com/photo-' . $id . '?w=2200&q=80&auto=format&fit=crop&fm=jpg';
+	};
+	$night  = coregas_import_remote_image( 'plant-night', $src( '1509390288171-ce2088f7d08e' ), 'gas-plant-at-night.jpg', 'Gas plant at night' );
+	$above  = coregas_import_remote_image( 'facility-above', $src( '1509390032417-bd802f3fc669' ), 'gas-facility-from-above.jpg', 'Gas facility from above' );
+	$pipes  = coregas_import_remote_image( 'pipework', $src( '1627752633728-85ebd86dfe4a' ), 'pipework-and-valves.jpg', 'Pipework and valves' );
+	$floor  = coregas_find_or_import_bundled( 'production-floor.jpg', 'Industrial production floor' );
+	$flame  = coregas_find_or_import_bundled( 'flame.jpg', 'Natural gas flame' );
+	if ( ! $night || ! $above || ! $pipes ) {
+		return false;
+	}
+	// Same order as the built-in placeholder pool, so every fallback picks the same photo.
+	$pool = array( $above, $pipes, $floor, $flame, $night );
+	$pick = function ( $i ) use ( $pool ) {
+		return (int) $pool[ abs( (int) $i ) % count( $pool ) ];
+	};
+	$fill = function ( $post_id, $key, $value ) use ( $p ) {
+		if ( $value && ! (int) get_post_meta( $post_id, $p . $key, true ) ) {
+			update_post_meta( $post_id, $p . $key, (string) $value );
+		}
+	};
+
+	/* Theme Settings: default photos and default banner. */
+	$settings = coregas_settings_id();
+	if ( $settings ) {
+		$stock = get_post_meta( $settings, $p . 'stock_images', true );
+		if ( ! is_array( $stock ) || ! array_filter( wp_list_pluck( $stock, 'image' ) ) ) {
+			update_post_meta( $settings, $p . 'stock_images', array_map( function ( $id ) { return array( 'image' => (string) $id ); }, $pool ) );
+		}
+		$fill( $settings, 'banner_default', $night );
+		$fill( $settings, 'arch_cg_service_image', $pipes );
+		$fill( $settings, 'arch_cg_industry_image', $pipes );
+		$fill( $settings, 'arch_cg_licence_image', $night );
+	}
+
+	/* Page banners (same photos as their placeholders). */
+	foreach ( array( 'about-us' => $above, 'gas-supply' => $pipes, 'regulation' => $night, 'contact-us' => $above ) as $slug => $img ) {
+		$page = get_page_by_path( $slug );
+		if ( $page ) {
+			$fill( $page->ID, 'banner_image', $img );
+		}
+	}
+
+	/* Sections. */
+	foreach ( get_posts( array( 'post_type' => 'cg_section', 'post_status' => 'publish', 'posts_per_page' => 300 ) ) as $sec ) {
+		$type = get_post_meta( $sec->ID, $p . 'section_type', true );
+		if ( 'hero' === $type && ! (int) get_post_meta( $sec->ID, $p . 'hero_image', true ) ) {
+			$slides = get_post_meta( $sec->ID, $p . 'hero_slides', true );
+			if ( ! is_array( $slides ) || ! array_filter( wp_list_pluck( $slides, 'image' ) ) ) {
+				update_post_meta( $sec->ID, $p . 'hero_image', (string) $night );
+				update_post_meta( $sec->ID, $p . 'hero_slides', array( array( 'image' => (string) $above ), array( 'image' => (string) $pipes ) ) );
+			}
+		}
+		if ( 'about' === $type ) {
+			$fill( $sec->ID, 'about_image', $pipes );
+		}
+		if ( 'split' === $type ) {
+			$left = 'left' === get_post_meta( $sec->ID, $p . 'split_side', true );
+			$fill( $sec->ID, 'split_image', $pick( (int) $sec->menu_order + ( $left ? 4 : 0 ) ) );
+		}
+		if ( 'steps' === $type && '0' !== (string) get_post_meta( $sec->ID, $p . 'steps_photos', true ) ) {
+			$steps = get_post_meta( $sec->ID, $p . 'steps', true );
+			if ( is_array( $steps ) ) {
+				$i = 0;
+				foreach ( $steps as $k => $step ) {
+					if ( empty( $step['image'] ) ) {
+						$steps[ $k ]['image'] = (string) $pick( $i );
+					}
+					$i++;
+				}
+				update_post_meta( $sec->ID, $p . 'steps', $steps );
+			}
+		}
+	}
+
+	/* Featured images of list items and news. */
+	foreach ( array( 'cg_service', 'cg_industry', 'cg_licence', 'post' ) as $pt ) {
+		$items = get_posts( array( 'post_type' => $pt, 'post_status' => 'publish', 'posts_per_page' => 100, 'orderby' => array( 'menu_order' => 'ASC', 'date' => 'DESC' ) ) );
+		foreach ( $items as $i => $item ) {
+			if ( has_post_thumbnail( $item ) ) {
+				continue;
+			}
+			$img = 'cg_licence' === $pt ? $night : $pick( 'post' === $pt ? $i : max( (int) $item->menu_order, $i ) );
+			set_post_thumbnail( $item->ID, $img );
+		}
+	}
+	return true;
 }
 
 add_action( 'template_redirect', 'coregas_legacy_redirects' );

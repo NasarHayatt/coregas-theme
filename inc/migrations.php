@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-const COREGAS_DB_VERSION = 17;
+const COREGAS_DB_VERSION = 18;
 
 add_action( 'init', 'coregas_run_migrations', 120 ); // after theme activation/seed (init 99).
 /**
@@ -121,6 +121,9 @@ function coregas_run_migrations() {
 		} else {
 			set_transient( 'coregas_media_retry', 1, 10 * MINUTE_IN_SECONDS );
 		}
+	}
+	if ( 17 <= (int) get_option( 'coregas_db_version', 1 ) && $current < 18 && coregas_migration_18() ) {
+		update_option( 'coregas_db_version', 18 );
 	}
 
 	delete_transient( 'coregas_migrating' );
@@ -1522,6 +1525,93 @@ function coregas_migration_17() {
 			}
 			$img = 'cg_licence' === $pt ? $night : $pick( 'post' === $pt ? $i : max( (int) $item->menu_order, $i ) );
 			set_post_thumbnail( $item->ID, $img );
+		}
+	}
+	return true;
+}
+
+/**
+ * Import a file bundled with the theme (path relative to the theme folder) into the
+ * Media Library once; found again by its key.
+ *
+ * @param string $rel   Path inside the theme, e.g. assets/img/core-gas-logo.webp.
+ * @param string $key   Key stored on the attachment.
+ * @param string $title Title and alt text.
+ * @return int Attachment ID or 0.
+ */
+function coregas_import_theme_file( $rel, $key, $title ) {
+	$found = get_posts( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'meta_key' => '_coregas_source', 'meta_value' => $key, 'posts_per_page' => 1, 'fields' => 'ids' ) );
+	if ( $found ) {
+		return (int) $found[0];
+	}
+	$src = COREGAS_DIR . '/' . ltrim( $rel, '/' );
+	if ( ! file_exists( $src ) ) {
+		return 0;
+	}
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$tmp = wp_tempnam( basename( $src ) );
+	if ( ! $tmp || ! copy( $src, $tmp ) ) {
+		return 0;
+	}
+	$id = media_handle_sideload( array( 'name' => basename( $src ), 'tmp_name' => $tmp ), 0, $title );
+	if ( is_wp_error( $id ) ) {
+		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		return 0;
+	}
+	update_post_meta( $id, '_wp_attachment_image_alt', $title );
+	update_post_meta( $id, '_coregas_source', $key );
+	return (int) $id;
+}
+
+/**
+ * v18: logo, favicon and social sharing image into the Media Library and set in Theme
+ * Settings; every page and list page gets its own banner photo field filled (with the
+ * photo it already shows), so nothing on the site comes from theme files any more.
+ *
+ * @return bool
+ */
+function coregas_migration_18() {
+	$p        = COREGAS_META_PREFIX;
+	$settings = coregas_settings_id();
+	if ( ! $settings ) {
+		return true;
+	}
+	$set_empty = function ( $key, $value ) use ( $settings, $p ) {
+		if ( $value && ! (int) get_post_meta( $settings, $p . $key, true ) ) {
+			update_post_meta( $settings, $p . $key, (string) $value );
+		}
+	};
+
+	$logo  = coregas_import_theme_file( 'assets/img/core-gas-logo.webp', 'logo', 'Core Gas Private Limited' );
+	$icon  = coregas_import_theme_file( 'assets/img/favicon-512.png', 'favicon', 'Core Gas site icon' );
+	$share = coregas_import_theme_file( 'assets/img/share-image.jpg', 'share-image', 'Core Gas Private Limited' );
+	if ( ! $logo || ! $icon || ! $share ) {
+		return false;
+	}
+	$set_empty( 'logo', $logo );
+	$set_empty( 'footer_logo', $logo );
+	$set_empty( 'favicon', $icon );
+	$set_empty( 'seo_image', $share );
+	if ( ! get_option( 'site_icon' ) ) {
+		update_option( 'site_icon', $icon );
+	}
+
+	/* Every page banner and list-page banner has its photo set (the one it shows today). */
+	$default = (int) get_post_meta( $settings, $p . 'banner_default', true );
+	if ( $default ) {
+		$front = (int) get_option( 'page_on_front' );
+		foreach ( get_pages( array( 'post_status' => 'publish,private,draft' ) ) as $page ) {
+			if ( (int) $page->ID === $front ) {
+				continue;
+			}
+			if ( ! (int) get_post_meta( $page->ID, $p . 'banner_image', true ) ) {
+				update_post_meta( $page->ID, $p . 'banner_image', (string) $default );
+			}
+		}
+		foreach ( array_keys( coregas_archive_contexts() ) as $ctx ) {
+			$set_empty( 'arch_' . $ctx . '_image', $default );
 		}
 	}
 	return true;

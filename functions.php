@@ -7,7 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'COREGAS_VERSION', '2.2.0' );
+define( 'COREGAS_VERSION', '2.2.1' );
 define( 'COREGAS_DIR', get_template_directory() );
 define( 'COREGAS_URI', get_template_directory_uri() );
 
